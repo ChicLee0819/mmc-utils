@@ -2602,6 +2602,113 @@ int do_rpmb_write_block(int nargs, char **argv)
 	return ret;
 }
 
+static int str_to_u32(const char *src, __u32 *dest, int base)
+{
+	char *endptr;
+	__u32 tmp;
+
+	tmp = strtoul(src, &endptr, base);
+	if (errno || *endptr)
+		return 1;
+	*dest = tmp;
+	return 0;
+}
+
+int do_manufacturer(int nargs, char **argv)
+{
+	int fd, i;
+	char *device;
+	unsigned int cmd_type;
+	unsigned int resp_type;
+	__u32 opcode;
+	__u32 arg;
+	__u8 buf[512];
+	struct mmc_ioc_cmd idata = {0};
+
+	/* Command number */
+	if (str_to_u32(argv[1], &opcode, 10) ||
+		(opcode != MMC_SEND_MANUFACTURER_1 &&
+		opcode  != MMC_SEND_MANUFACTURER_2 &&
+		opcode  != MMC_SEND_MANUFACTURER_3 &&
+		opcode  != MMC_SEND_MANUFACTURER_4)) {
+		fprintf(stderr, "%s: invalid argument '%s'\n",
+			argv[0], argv[1]);
+		exit(1);
+	}
+
+	/* Command type */
+	if (0 == strcasecmp("ac", argv[2])) {
+		cmd_type = MMC_CMD_AC;
+	}
+	else if (0 == strcasecmp("adtc", argv[2])) {
+		//fprintf(stderr, "%s: 'adtc' is not implemented\n",
+		//	argv[0]);
+		//exit(1);
+		cmd_type = MMC_CMD_ADTC;
+	}
+	else {
+		fprintf(stderr, "%s: invalid argument '%s'\n",
+			argv[0], argv[2]);
+		exit(1);
+	}
+
+	/* Response type */
+	if (0 == strcasecmp("r1b", argv[3])) {
+		resp_type = MMC_RSP_R1B;
+	}
+	else if (0 == strcasecmp("r1", argv[3])) {
+		resp_type = MMC_RSP_R1;
+	}
+	else {
+		fprintf(stderr, "%s: invalid argument '%s'\n",
+			argv[0], argv[3]);
+		exit(1);
+	}
+
+	/* Argument */
+	if (str_to_u32(argv[4], &arg, 16)) {
+		fprintf(stderr, "%s: invalid argument '%s'\n",
+			argv[0], argv[4]);
+		exit(1);
+	}
+
+	/* Device */
+	device = argv[5];
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		perror("open device");
+		exit(1);
+	}
+
+	/* Fill ioctl & send */
+	idata.opcode = opcode;
+	idata.arg    = arg;
+	idata.flags  = (cmd_type | resp_type);
+	if ( cmd_type == MMC_CMD_ADTC )
+	{
+		idata.blksz = 512;
+		idata.blocks = 1;
+		mmc_ioc_cmd_set_data(idata, buf);
+	}
+
+	if (ioctl(fd, MMC_IOC_CMD, &idata)) {
+		perror("ioctl");
+		exit(1);
+	}
+	if ( cmd_type == MMC_CMD_ADTC )
+	{
+		for (i = 0; i < 512; i++) {
+			printf("%2x ", buf[i]);
+		if ((i + 1) % 16 == 0)
+			printf("\n");
+		}
+	}
+
+	close(fd);
+
+	return 0;
+}
+
 static int do_cache_ctrl(int value, int nargs, char **argv)
 {
 	__u8 ext_csd[512];

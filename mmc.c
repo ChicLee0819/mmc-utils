@@ -197,6 +197,16 @@ static struct Command commands[] = {
 		  "    mmc rpmb write-block /dev/mmcblk0rpmb 0x02 - -",
 	  NULL
 	},
+	{ do_manufacturer, 5,
+	  "manufacturer", "<cmd number> " "<cmd type> "
+		"<response type> " "<argument> " "<device>\n"
+		"Send a manufacturer specific command to the <device>.\n"
+		"<cmd number>    - [60 - 63]\n"
+		"<cmd type>      - [ac] (adtc is not implemented)\n"
+		"<response type> - [r1, r1b]\n"
+		"<argument>      - 4 byte arbitrary argument in hex",
+	  NULL
+	},
 	{ do_cache_en, -1,
 	  "cache enable", "<device>\n"
 		"Enable the eMMC cache feature on <device>.\n"
